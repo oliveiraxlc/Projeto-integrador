@@ -1,0 +1,71 @@
+create database glds;
+
+create table unidades(
+    unidades_id serial primary key,
+    nome varchar(100),
+    cidade varchar(100)
+);
+
+create table cursos(
+    cursos_id serial primary key,
+    nome varchar(100),
+    unidades_id int,
+    foreign key (unidades_id) references unidades(unidades_id)
+);
+
+create table turmas(
+    turmas_id serial primary key,
+    codigo_turma varchar(100) unique,
+    cursos_id int,
+    foreign key (cursos_id) references cursos(cursos_id)
+);
+
+create table usuarios(
+    usuarios_id serial primary key,
+    nome varchar(100) not null,
+    email varchar(100) not null,
+    senha varchar(30) not null,
+    tipo_usuario varchar(10),
+    turmas_id int,
+    foreign key (turmas_id) references turmas(turmas_id),
+    constraint chk_tipo_usuario check (tipo_usuario in ('Admin', 'Professor', 'Aluno')),
+    nickname_anonimo varchar(10),
+    pontos_totais int,
+    nivel int
+);
+
+create table Calendario(
+    calendario_id serial primary key,
+    titulo varchar(20),
+    descricao text,
+    data_hora timestamp,
+    tipo_evento varchar(100),
+    turmas_id int,
+    foreign key (turmas_id) references turmas(turmas_id)
+);
+
+create table Atividades(
+    atividades_id serial primary key,
+    titulo varchar(100),
+    descricao text,
+    pontos_recompensa int,
+    data_entrega timestamp,
+    professor_id int,
+    foreign key(professor_id) references turmas(turmas_id)
+);
+
+create table ConclusaoAtividades(
+    conclusao_id serial primary key,
+    aluno_id int,
+    foreign key (aluno_id) references Atividades(atividades_id),
+    data_conclusao timestamp,
+    status boolean
+);
+
+create table Pontos(
+    pontos_id serial primary key,
+    aluno_id int,
+    foreign key (aluno_id) references usuarios(usuario_id),
+    motivo text,
+    data_ganho timestamp
+);
