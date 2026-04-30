@@ -1,71 +1,128 @@
-create database glds;
+create database lgds;
 
 create table unidades(
     unidades_id serial primary key,
     nome varchar(100),
-    cidade varchar(100)
+    cidade varchar(100),
+    estado char(2)
 );
 
 create table cursos(
     cursos_id serial primary key,
     nome varchar(100),
+    descricao text,
     unidades_id int,
     foreign key (unidades_id) references unidades(unidades_id)
 );
 
 create table turmas(
     turmas_id serial primary key,
-    codigo_turma varchar(100) unique,
+    codigo_turma varchar(50) unique,
+    ano smallint,
+    turno varchar(20),
     cursos_id int,
-    foreign key (cursos_id) references cursos(cursos_id)
+    foreign key (cursos_id) references cursos(cursos_id),
+    constraint chk_turno check (turno in ('Matutino', 'Vespertino', 'Noturno'))
 );
 
 create table usuarios(
-    usuarios_id serial primary key,
+    usuarios_id      serial primary key,
     nome varchar(100) not null,
-    email varchar(100) not null,
-    senha varchar(30) not null,
-    tipo_usuario varchar(10),
+    email varchar(150) not null unique,
+    senha varchar(255) not null,
+    tipo_usuario varchar(15)  not null,
     turmas_id int,
     foreign key (turmas_id) references turmas(turmas_id),
     constraint chk_tipo_usuario check (tipo_usuario in ('Admin', 'Professor', 'Aluno')),
-    nickname_anonimo varchar(10),
-    pontos_totais int,
-    nivel int
+    nickname_anonimo varchar(20) unique,
+    pontos_totais int not null default 0,
+    nivel  varchar(30) not null default 'Iniciante',
+    constraint chk_nivel check (nivel in ('Iniciante', 'Organizado', 'Focado', 'Mestre do Prazo', 'Elite Academica'))
 );
 
-create table Calendario(
+create table niveis_pontuacao(
+    niveis_id  serial primary key,
+    nome  varchar(30) not null unique,
+    pts_minimo int not null,
+    pts_maximo int,
+    descricao  text
+);
+
+insert into niveis_pontuacao (nome, pts_minimo, pts_maximo, descricao) values
+    ('Iniciante',        0,   100, 'Aluno iniciando sua jornada de organizacao.'),
+    ('Organizado',     101,   250, 'Aluno demonstrando comprometimento com prazos.'),
+    ('Focado',         251,   400, 'Aluno com boa disciplina na entrega de atividades.'),
+    ('Mestre do Prazo',401,   600, 'Aluno com excelente gestao do tempo.'),
+    ('Elite Academica',601,  null, 'Aluno com desempenho exemplar em organizacao.');
+
+create table calendario(
     calendario_id serial primary key,
-    titulo varchar(20),
-    descricao text,
-    data_hora timestamp,
-    tipo_evento varchar(100),
-    turmas_id int,
-    foreign key (turmas_id) references turmas(turmas_id)
+    titulo        varchar(150),
+    descricao     text,
+    data_hora     timestamp,
+    tipo_evento   varchar(50),
+    turmas_id     int,
+    foreign key (turmas_id) references turmas(turmas_id),
+    constraint chk_tipo_evento check (tipo_evento in ('Prova', 'Entrega de Atividade', 'Evento Escolar', 'Feriado'))
 );
 
-create table Atividades(
+create table atividades(
     atividades_id serial primary key,
-    titulo varchar(100),
-    descricao text,
-    pontos_recompensa int,
-    data_entrega timestamp,
-    professor_id int,
-    foreign key(professor_id) references turmas(turmas_id)
+    titulo        varchar(100),
+    descricao     text,
+    data_entrega  timestamp,
+    professor_id  int,
+    foreign key (professor_id) references usuarios(usuarios_id),
+    turmas_id     int,
+    foreign key (turmas_id) references turmas(turmas_id),
+    calendario_id int,
+    foreign key (calendario_id) references calendario(calendario_id)
 );
 
-create table ConclusaoAtividades(
-    conclusao_id serial primary key,
-    aluno_id int,
-    foreign key (aluno_id) references Atividades(atividades_id),
-    data_conclusao timestamp,
-    status boolean
+create table conclusao_atividades(
+    conclusao_id   serial primary key,
+    aluno_id       int,
+    foreign key (aluno_id) references usuarios(usuarios_id),
+    atividades_id  int,
+    foreign key (atividades_id) references atividades(atividades_id),
+    data_entrega   timestamp,
+    status         varchar(25) not null default 'Pendente',
+    pontos_obtidos smallint not null default 0,
+    constraint chk_status check (status in ('Pendente', 'Entrega Antecipada', 'Entregue no Prazo', 'Entregue com Atraso', 'Nao Entregue')),
+    constraint chk_pontos check (pontos_obtidos in (0, 5, 10, 15)),
+    unique (aluno_id, atividades_id)
 );
 
-create table Pontos(
-    pontos_id serial primary key,
-    aluno_id int,
-    foreign key (aluno_id) references usuarios(usuario_id),
-    motivo text,
-    data_ganho timestamp
+create table pontos(
+    pontos_id     serial primary key,
+    aluno_id      int,
+    foreign key (aluno_id) references usuarios(usuarios_id),
+    atividades_id int,
+    foreign key (atividades_id) references conclusao_atividades(conclusao_id),
+    quantidade    int not null default 0,
+    motivo        text,
+    data_ganho    timestamp not null default now()
 );
+
+-- DADOS DE EXEMPLO
+
+insert into unidades (nome, cidade, estado) values
+    ('SENAI - Unidade Centro', 'Sao Paulo', 'SP');
+
+insert into cursos (nome, descricao, unidades_id) values
+    ('Desenvolvimento de Sistemas', 'Curso tecnico em TI', 1),
+    ('Administracao', 'Curso tecnico em Administracao', 1);
+
+insert into turmas (codigo_turma, ano, turno, cursos_id) values
+    ('DS-2025-A',  2025, 'Matutino',   1),
+    ('DS-2025-B',  2025, 'Noturno',    1),
+    ('ADM-2025-A', 2025, 'Vespertino', 2);
+
+insert into usuarios (nome, email, senha, tipo_usuario, turmas_id, nickname_anonimo, pontos_totais, nivel) values
+    ('Ana Souza',      'ana@senai.br',       'senha123', 'Professor', null, null,        0, 'Iniciante'),
+    ('Carlos Lima',    'carlos@senai.br',    'senha123', 'Professor', null, null,        0, 'Iniciante'),
+    ('Joao Silva',     'joao@email.com',     'senha123', 'Aluno',     1,    'Aluno#001', 0, 'Iniciante'),
+    ('Maria Oliveira', 'maria@email.com',    'senha123', 'Aluno',     1,    'Aluno#002', 0, 'Iniciante'),
+    ('Pedro Santos',   'pedro@email.com',    'senha123', 'Aluno',     1,    'Aluno#003', 0, 'Iniciante'),
+    ('Lucas Costa',    'lucas@email.com',    'senha123', 'Aluno',     2,    'Aluno#004', 0, 'Iniciante'),
+    ('Fernanda Rocha', 'fernanda@email.com', 'senha123', 'Aluno',     3,    'Aluno#005', 0, 'Iniciante');
